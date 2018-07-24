@@ -146,7 +146,7 @@ After the node setup has been initialized we can run the node as shown in the fo
 instruct Geth to accept RPC connections, it’s needed so that Truffle can connect to Geth.
 
 ```
-geth --datadir=./node/chaindata/ --rpc
+geth --datadir ./node/chaindata/ --rpc --ipcpath geth.ipc --nodiscover
 ```
 
 If the command succeeded you should get output similar to the following.
@@ -173,12 +173,85 @@ INFO [07-06|16:21:07] IPC endpoint opened: \\.\pipe\geth.ipc
 INFO [07-06|16:21:07] HTTP endpoint opened: http://127.0.0.1:8545
 ```
 
+### Create a new Account (Wallet)
+
+I have been using Mist to create a new account. Open another command shell and start Mist as follos:
 
 ```
 mist –rpc "http://127.0.0.1:8545"
 ```
 
+Now a UI Window should pop up. In the Wallets tab, press Add Account and create a new wallet. Once, 
+the account has been created you need to copy the public key token which is displayed for the account.
+We'll need this in the following to unlock the account using the geth console.
+
+![screenshot](https://github.com/mwittig/bc-sample-dapp/raw/master/screenshots/account-created.png)
+
+
+### Attach Geth Console to Node
+
+Now, we connect a console to the node to be able to execute some admin commands. The console needs to 
+be attached via IPC to get access to the management APIs provided with the node. The APIs are 
+not available via the HTTP endpoint of the node by default. 
+
+Note, on Windows named sockets for IPC which are not visible as files in the current directory as 
+one might expect and the patrh for all sockets is preceded by "\\.\pipe". On Linuy/MacOS simple 
+provide "ipc:geth.ipc". 
+
+Open another command shell and start the Geth console as follows:
 
 ```
-geth attach http://127.0.0.1:8545
+geth attach "ipc:\\.\pipe\geth.ipc"
+```
+
+In the console we first start the mining process as follows:
+
+```
+miner.start()
+```
+
+The mining process will take some time  to start (seconds or even minutes) even 
+though the command will return immediately. When ming has started successfully you should
+see ether being added to the balance of your account.
+
+Now, type the following command into the console where the token needs to be replaced with token of the 
+account you have previously created:
+
+```
+personal.unlockAccount('0x018d00d124CAE7ADb5A281E684b03EA2f6a13E8a')
+```
+
+You will be prompted for a Passphrase. This is the password you have 
+assigned for the wallet account you have previously created.
+
+### Deploying the Smart Contract to the Private Test Network
+
+This step is fairly simply as the config file `truffle-config.js` already contains an entry for
+the network configuration named "testNet". Accordingly, we can use Truffle to deploy the contract 
+as follows:
+
+```
+truffle migrate --network testNet
+```
+
+When the command has been successfully executed you should see some output similar to the following:
+
+```
+C:\Users\marcus\bc-sample-dapp>truffle migrate --network testNet
+Using network 'testNet'.
+
+Running migration: 1_initial_migration.js
+  Deploying Migrations...
+  ... 0x5a24cd24b5d245b5f91bbe0f0ff4eb4a6c890272c93c2c5063e25a25baf42290
+  Migrations: 0xe31a54e6d6dc9eb2e0dc07efea7f6f1af8d11061
+Saving successful migration to network...
+  ... 0xa2cf73797103a5ce7ffbab6cc89dc18f66863b90391a8a1d8b061828f8f407a3
+Saving artifacts...
+Running migration: 2_deploy_contracts.js
+  Deploying Greeter...
+  ... 0x4fc88963cb3b138e69caa9f9bb015ce487b5741361a0523fef95dd134621d8f2
+  Greeter: 0x210c4441064231caeba09fa1d8e96a017479c772
+Saving successful migration to network...
+  ... 0x456f4b6345ffb608664b83e1870221106ef36809354d0ebff631e91830b2aca2
+Saving artifacts...
 ```
